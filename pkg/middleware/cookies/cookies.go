@@ -55,6 +55,27 @@ func WriteCookie(w http.ResponseWriter, name string, value string, maxAge int, g
 	http.SetCookie(w, &cookie)
 }
 
+// Added for checking that embedded panel has logged in grafana or not
+func WriteCookieWithHTTPOnlyDisabled(w http.ResponseWriter, name string, value string, maxAge int, getCookieOptions getCookieOptionsFunc) {
+	if getCookieOptions == nil {
+		getCookieOptions = NewCookieOptions
+	}
+
+	options := getCookieOptions()
+	cookie := http.Cookie{
+		Name:     name,
+		MaxAge:   maxAge,
+		Value:    value,
+		HttpOnly: false,
+		Path:     options.Path,
+		Secure:   options.Secure,
+	}
+	if !options.SameSiteDisabled {
+		cookie.SameSite = options.SameSiteMode
+	}
+	http.SetCookie(w, &cookie)
+}
+
 func WriteSessionCookie(ctx *contextmodel.ReqContext, cfg *setting.Cfg, value string, maxLifetime time.Duration) {
 	if cfg.Env == setting.Dev {
 		ctx.Logger.Info("New token", "unhashed token", value)
@@ -67,5 +88,5 @@ func WriteSessionCookie(ctx *contextmodel.ReqContext, cfg *setting.Cfg, value st
 		maxAge = int(maxLifetime.Seconds())
 	}
 
-	WriteCookie(ctx.Resp, cfg.LoginCookieName, url.QueryEscape(value), maxAge, nil)
+	WriteCookieWithHTTPOnlyDisabled(ctx.Resp, cfg.LoginCookieName, url.QueryEscape(value), maxAge, nil)
 }
